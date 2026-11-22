@@ -92,6 +92,7 @@ git clone https://github.com/voidkio/iron-time.git "$env:APPDATA\Folia\mods\iron
 - 同帧多字齐发时按 `FRAME_SPARK_BUDGET = 1200` 均分发射量，单词爆发不受影响，避免一帧内堆出上千粒子
 - 震屏冲量限幅 `SHAKE_VMAX = 2000` px/s，多字同帧不会叠成整屏猛甩
 - 火花寿命不超过当前行时长 × 0.9，片头、念白等短行不会把粒子拖进下一句
+- 换行瞬间把已有火花压到剩余 0.25 秒内燃尽，上一句的余烬不和下一句叠加
 - Bloom 后处理每 3 帧重算一次，光晕最多滞后 50ms；跳过的帧复用上一份结果，画面不中断
 - Canvas 状态与 `save` / `restore` 严格配对，`lineCap` 只在需要的分支内设置
 

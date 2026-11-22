@@ -1049,6 +1049,14 @@ function mountForge(folium, container, ctx) {
     debris.length = 0;
   }
 
+  function burnOutParticles(keepSec) {
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      if (p.ambient) continue;
+      if (p.life > p.age + keepSec) p.life = p.age + keepSec;
+    }
+  }
+
   function syncLateLine(nowAt) {
     if (ctx.staticMode) return;
     const base = nowAt || performance.now();
@@ -1068,7 +1076,7 @@ function mountForge(folium, container, ctx) {
     if (ctx.staticMode) {
       if (idx !== lastIndexSeen) {
         lastIndexSeen = idx; pendingLineIndex = idx; finishing = false;
-        clearLineCallbacks(); buildCurrent();
+        clearLineCallbacks(); burnOutParticles(0.25); buildCurrent();
       }
       return;
     }
@@ -1094,6 +1102,7 @@ function mountForge(folium, container, ctx) {
     finishing = false;
     if (pendingLineIndex === renderedLineIndex) return;
     clearLineCallbacks();
+    burnOutParticles(0.25);
     lastIndexSeen = pendingLineIndex;
     buildCurrent();
     syncLateLine();
