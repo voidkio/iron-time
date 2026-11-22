@@ -11,6 +11,7 @@ const BLOOM_SCALE = 0.25;
 const BLOOM_EVERY = 3;
 const MAX_PARTICLES = 3200;
 const FRAME_SPARK_BUDGET = 1200;
+const STRIKE_PER_FRAME = 3;
 const SHAKE_VMAX = 2000;
 
 const G = (zh, en) => ({ 'zh-CN': zh, en });
@@ -799,14 +800,32 @@ function mountForge(folium, container, ctx) {
     currentLayout = idx >= 0 ? getLayout(ctx.lines[idx], idx) : null;
     wordNodes.length = 0;
     if (!currentLayout) return;
+    let preNodes = null;
     if (currentLayout._overlapFit == null) {
-      renderLayout(currentLayout, currentBox, false);
+      preNodes = renderLayout(currentLayout, currentBox, false);
       const area = currentBox.firstChild;
       const line = area && area.querySelector ? area.querySelector('[data-overlap-fit-line]') : null;
       const fit = (area && line) ? measureOverlapFit(area, line) : 1;
       currentLayout._overlapFit = fit < 0.995 ? fit : 1;
+      if (preNodes && preNodes.length) {
+        if (currentLayout._overlapFit !== 1) {
+          const fs0 = ctx.getDisplay ? ctx.getDisplay().lyricsFontScale : 1;
+          const dd = currentLayout.densityScale * currentLayout._overlapFit;
+          const fs = clamp(W * 0.055 * dd * fs0, 40 * dd * fs0, 72 * dd * fs0);
+          for (let i = 0; i < preNodes.length; i++) preNodes[i].holder.style.fontSize = `${fs}px`;
+        }
+        if (withEntry && !reduceMotion() && currentLayout.rows) {
+          const entryEnergy = currentLayout._energy != null ? currentLayout._energy : 1;
+          for (const row of currentLayout.rows) {
+            const entryY = (-30 - row.rowIndex * 6) * entryEnergy;
+            row._entrySpring = { x: entryY, v: 0, k: 180, c: 22 };
+            row._entryActive = true;
+            if (row._el) row._el.style.transform = `translate3d(${row.rowX}px,${(row.rowY + entryY).toFixed(2)}px,0) rotate(${row.rowRotate}deg)`;
+          }
+        }
+      }
     }
-    wordNodes.push(...renderLayout(currentLayout, currentBox, withEntry));
+    wordNodes.push(...(preNodes || renderLayout(currentLayout, currentBox, withEntry)));
   }
 
   const RUST_HOLD = 0.28;
@@ -1063,6 +1082,7 @@ function mountForge(folium, container, ctx) {
     wordNodes.forEach(n => {
       if (lyricTime - n.w.start > LATE_STRIKE && !n.struck) {
         n.struck = true;
+        n._queued = false;
         n.strikeAt = base - Math.max(0, (lyricTime - n.w.start) * 1000);
         n.fallDebrisFired = false;
         n.fallDustFired = false;
@@ -1556,7 +1576,8 @@ function mountForge(folium, container, ctx) {
         if (st > 0 && (st < 1 || timeSec - n.w.start < LATE_STRIKE)) strikeN++;
       }
     }
-    const sparkBudget = strikeN > 1 ? FRAME_SPARK_BUDGET / strikeN : Infinity;
+    const sparkBudget = strikeN > 1 ? FRAME_SPARK_BUDGET / Math.min(strikeN, STRIKE_PER_FRAME) : Infinity;
+    let strikeLeft = STRIKE_PER_FRAME;
 
     wordNodes.forEach(n => {
       const { w } = n;
@@ -1577,7 +1598,10 @@ function mountForge(folium, container, ctx) {
       const passed = t >= 1;
       const fresh = t > 0 && (t < 1 || timeSec - w.start < LATE_STRIKE);
 
-      if (fresh && !n.struck && !paused) {
+      if (fresh && !n.struck && !paused && strikeLeft <= 0) n._queued = true;
+      if ((fresh || n._queued) && !n.struck && !paused && strikeLeft > 0) {
+        strikeLeft--;
+        n._queued = false;
         n.struck = true; n.strikeAt = now;
         const sens = clamp(S.rhythm, 0, 1);
         const t3 = 78 - sens * 16, t2 = 42 - sens * 8;
@@ -1595,7 +1619,7 @@ function mountForge(folium, container, ctx) {
           n.strain.v = 13;
         }
       }
-      if (!active && t <= 0) n.struck = false;
+      if (!active && t <= 0) { n.struck = false; n._queued = false; }
 
       const sinceStart = timeSec - w.start;
 
