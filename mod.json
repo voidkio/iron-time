@@ -1,0 +1,11 @@
+{
+  "folium": 1,
+  "id": "iron-time",
+  "name": "IronTime",
+  "version": "1.0.0",
+  "author": "voidkio",
+  "description": "逐字歌词视觉：热控 / 火花 / 冲击 / 错落布局 / 三态弹簧 / 三级 clamp 字号。逐字时间取宿主 line.words；入场抛起恒定大小、到位锤击、逐字锈蚀碎裂掉落、双层冲击波与震屏；含 style 写入缓存、RGB LUT 预解析、拖尾去渐变等性能优化。原生 DOM + Canvas + 弹簧积分，无 React 依赖。",
+  "client": "client.mjs",
+  "preview": "preview.png",
+  "folia": ">=0.7.21"
+}
