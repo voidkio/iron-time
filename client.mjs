@@ -15,7 +15,7 @@ const SETTINGS = [
   { key: 'glow',   type: 'number', label: G('辉光强度', 'Glow intensity'),   group: G('热控 / HEAT', 'HEAT'),   min: 0,   max: 2,    step: 0.01, defaultValue: 2.0 },
   { key: 'peak',   type: 'number', label: G('白热峰值', 'White-hot peak'),   group: G('热控 / HEAT', 'HEAT'),   min: 0,   max: 1,    step: 0.01, defaultValue: 1.0 },
   { key: 'cool',   type: 'number', label: G('冷却速度', 'Cooling rate'),     group: G('热控 / HEAT', 'HEAT'),   min: 0.5, max: 2,    step: 0.01, defaultValue: 0.70 },
-  { key: 'density', type: 'number', label: G('密度', 'Density'),             group: G('火花 / SPARK', 'SPARK'),  min: 0,   max: 3,    step: 0.01, defaultValue: 2.33 },
+  { key: 'density', type: 'number', label: G('密度', 'Density'),             group: G('火花 / SPARK', 'SPARK'),  min: 0,   max: 3,    step: 0.01, defaultValue: 2.1 },
   { key: 'gravity', type: 'number', label: G('重力', 'Gravity (px/s²)'),     group: G('火花 / SPARK', 'SPARK'),  min: 200, max: 1000, step: 10,    defaultValue: 200 },
   { key: 'speed',   type: 'number', label: G('初速', 'Initial velocity'),    group: G('火花 / SPARK', 'SPARK'),  min: 0.5, max: 1.8,  step: 0.01, defaultValue: 0.50 },
   { key: 'life',    type: 'number', label: G('余烬寿命', 'Ember lifetime'),  group: G('火花 / SPARK', 'SPARK'),  min: 0.5, max: 2,    step: 0.01, defaultValue: 2.00 },
