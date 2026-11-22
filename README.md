@@ -6,6 +6,12 @@ Folium 逐字歌词视觉：铁水浇筑、锤击迸火。
 
 ![IronTime](preview.png)
 
+## 实机演示
+
+Folia 内实录，30 秒，原片 1920×1080 / 60fps，仓库内为 720p 压缩版（3.4 MB）。
+
+[观看演示视频](docs/showcase.mp4)
+
 ## 效果
 
 **逐字时序**
