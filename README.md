@@ -91,6 +91,8 @@ git clone https://github.com/voidkio/iron-time.git "$env:APPDATA\Folia\mods\iron
 - 粒子总数上限 `MAX_PARTICLES = 3200`，超限时只截断新增、不强杀已有粒子，避免视觉跳变
 - 同帧多字齐发时按 `FRAME_SPARK_BUDGET = 1200` 均分发射量，单词爆发不受影响，避免一帧内堆出上千粒子
 - 震屏冲量限幅 `SHAKE_VMAX = 2000` px/s，多字同帧不会叠成整屏猛甩
+- 火花寿命不超过当前行时长 × 0.9，片头、念白等短行不会把粒子拖进下一句
+- 换行时上一句的残余粒子寿命压到 0.25 秒内燃尽，视觉上是快速冷却熄灭，不是凭空消失
 - Canvas 状态与 `save` / `restore` 严格配对，`lineCap` 只在需要的分支内设置
 
 ## 许可证

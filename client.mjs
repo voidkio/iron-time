@@ -613,6 +613,7 @@ function mountForge(folium, container, ctx) {
   })();
 
   let currentLayout = null, renderedLineIndex = -2;
+  let currentLineDur = Infinity;
 
   let staticPainted = -999;
   const wordNodes = [];
@@ -780,6 +781,20 @@ function mountForge(folium, container, ctx) {
     const idx = ctx.staticMode && ctx.staticLineIndex != null ? ctx.staticLineIndex : resolveLineIndex();
     if (idx === renderedLineIndex) return;
     renderedLineIndex = idx;
+    let dur = Infinity;
+    if (idx >= 0 && ctx.lines[idx]) {
+      const ln = ctx.lines[idx];
+      let s = typeof ln.startTime === 'number' ? ln.startTime : 0;
+      let e = typeof ln.endTime === 'number' ? ln.endTime : 0;
+      if (Array.isArray(ln.words)) {
+        for (const w of ln.words) {
+          const we = typeof w.end === 'number' ? w.end : (typeof w.endTime === 'number' ? w.endTime : 0);
+          if (we > e) e = we;
+        }
+      }
+      if (e > s) dur = e - s;
+    }
+    currentLineDur = dur;
     currentLayout = idx >= 0 ? getLayout(ctx.lines[idx], idx) : null;
     wordNodes.length = 0;
     if (!currentLayout) return;
@@ -1033,6 +1048,14 @@ function mountForge(folium, container, ctx) {
     debris.length = 0;
   }
 
+  function burnOutParticles(keepSec) {
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      if (p.ambient) continue;
+      if (p.life > p.age + keepSec) p.life = p.age + keepSec;
+    }
+  }
+
   function syncLateLine(nowAt) {
     if (ctx.staticMode) return;
     const base = nowAt || performance.now();
@@ -1052,7 +1075,7 @@ function mountForge(folium, container, ctx) {
     if (ctx.staticMode) {
       if (idx !== lastIndexSeen) {
         lastIndexSeen = idx; pendingLineIndex = idx; finishing = false;
-        clearLineCallbacks(); buildCurrent();
+        clearLineCallbacks(); burnOutParticles(0.25); buildCurrent();
       }
       return;
     }
@@ -1078,6 +1101,7 @@ function mountForge(folium, container, ctx) {
     finishing = false;
     if (pendingLineIndex === renderedLineIndex) return;
     clearLineCallbacks();
+    burnOutParticles(0.25);
     lastIndexSeen = pendingLineIndex;
     buildCurrent();
     syncLateLine();
@@ -1158,6 +1182,7 @@ function mountForge(folium, container, ctx) {
       Math.max(0, MAX_PARTICLES - particles.length),
       budget === undefined ? Infinity : Math.max(0, Math.round(budget))
     );
+    const lifeCap = isFinite(currentLineDur) ? Math.max(0.25, currentLineDur * 0.9) : Infinity;
     for (let i = 0; i < count; i++) {
       const lq = rand(); const layer = lq < 0.3 ? 0 : lq < 0.85 ? 1 : 2;
       const shape = chooseShape(rand());
@@ -1186,7 +1211,7 @@ function mountForge(folium, container, ctx) {
         x: ep.x, y: ep.y, vx: Math.cos(ang) * v, vy: vy0,
         age: 0,
 
-        life: (0.35 + rand() * 0.75) * S.life * (layer === 0 ? 0.72 : 1) * (up ? 1.65 : 1.05),
+        life: Math.min((0.35 + rand() * 0.75) * S.life * (layer === 0 ? 0.72 : 1) * (up ? 1.65 : 1.05), lifeCap),
         g: vy0 < 0 ? S.gravity * 3 * PX : null,
         size, layer, shape, rot: rand() * Math.PI * 2, vr: (rand() * 2 - 1) * (shape === 'scale' ? 4 : 8),
         variant, seed: rand() * 1000,
