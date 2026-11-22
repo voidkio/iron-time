@@ -8,7 +8,7 @@ const SHOCK_MAX_R = 0.55;
 const SPARK_GAIN = 1.35;
 const DUST_GAIN = 1.8;
 const BLOOM_SCALE = 0.25;
-const MAX_PARTICLES = 4000;
+const MAX_PARTICLES = 3500;
 
 const G = (zh, en) => ({ 'zh-CN': zh, en });
 const SETTINGS = [
