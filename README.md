@@ -56,7 +56,7 @@ git clone https://github.com/voidkio/iron-time.git "$env:APPDATA\Folia\mods\iron
 | 热控 | 辉光强度 `glow` | 0 ~ 2 | 2.00 |
 | | 白热峰值 `peak` | 0 ~ 1 | 1.00 |
 | | 冷却速度 `cool` | 0.5 ~ 2 | 0.70 |
-| 火花 | 密度 `density` | 0 ~ 3 | 2.52 |
+| 火花 | 密度 `density` | 0 ~ 3 | 2.33 |
 | | 重力 `gravity` | 200 ~ 1000 px/s² | 200 |
 | | 初速 `speed` | 0.5 ~ 1.8 | 0.50 |
 | | 余烬寿命 `life` | 0.5 ~ 2 | 2.00 |
