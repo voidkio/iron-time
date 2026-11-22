@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IronTime 锻火 · 实机演示</title>
+<meta name="description" content="Folium 逐字歌词视觉：铁水浇筑、锤击迸火。Folia 实机录制。">
+<style>
+  :root {
+    --bg: #0a0705;
+    --ink: #efe7dd;
+    --dim: #9a8d80;
+    --ember: #ff8a3c;
+    --rust: #6b2b18;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(120% 90% at 50% 0%, #1c0f09 0%, var(--bg) 55%, #050303 100%);
+    color: var(--ink);
+    font-family: "Songti SC", "Noto Serif SC", "Source Han Serif SC", "SimSun", serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(16px, 4vw, 48px);
+    min-height: 100%;
+  }
+  header { text-align: center; margin-bottom: clamp(14px, 2.4vw, 26px); }
+  h1 {
+    margin: 0;
+    font-size: clamp(22px, 3.2vw, 34px);
+    font-weight: 600;
+    letter-spacing: .18em;
+    text-indent: .18em;
+    color: #fff5ea;
+    text-shadow: 0 0 24px rgba(255, 138, 60, .45), 0 0 60px rgba(255, 80, 20, .25);
+  }
+  .sub {
+    margin: .55em 0 0;
+    font-size: clamp(12px, 1.4vw, 14px);
+    letter-spacing: .1em;
+    color: var(--dim);
+  }
+  .sub b { color: var(--ember); font-weight: 500; }
+  .frame {
+    width: min(100%, 1180px);
+    border-radius: 10px;
+    padding: 1px;
+    background: linear-gradient(160deg, rgba(255,138,60,.5), rgba(107,43,24,.15) 45%, rgba(255,138,60,.28));
+    box-shadow: 0 24px 70px -20px rgba(0,0,0,.9), 0 0 90px -30px rgba(255,90,20,.35);
+  }
+  video {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 9px;
+    background: #000;
+  }
+  footer {
+    margin-top: clamp(14px, 2.2vw, 22px);
+    font-size: clamp(12px, 1.3vw, 13px);
+    color: var(--dim);
+    letter-spacing: .06em;
+    text-align: center;
+    line-height: 1.9;
+  }
+  footer a { color: var(--ember); text-decoration: none; border-bottom: 1px solid rgba(255,138,60,.35); }
+  footer a:hover { border-bottom-color: var(--ember); }
+  .sep { opacity: .35; margin: 0 .6em; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>IronTime 锻火</h1>
+    <p class="sub">铁水浇筑 · 锤击迸火　<b>Folia 实机录制</b></p>
+  </header>
+
+  <div class="frame">
+    <video id="v" src="showcase.mp4" poster="poster.jpg"
+           controls autoplay muted playsinline loop preload="metadata"></video>
+  </div>
+
+  <footer>
+    32 秒 · 1280×652 · 有声<span class="sep">|</span>
+    <a href="showcase.mp4" download>下载原片</a><span class="sep">|</span>
+    <a href="https://github.com/voidkio/iron-time">GitHub 仓库</a>
+  </footer>
+
+<script>
+  // 浏览器的自动播放策略只允许静音自动播放；用户点一下播放条即可听到声音
+  const v = document.getElementById('v');
+  v.addEventListener('volumechange', () => { try { localStorage.setItem('it-muted', v.muted ? '1' : '0'); } catch (e) {} }, { once: false });
+  try { if (localStorage.getItem('it-muted') === '0') v.muted = false; } catch (e) {}
+</script>
+</body>
+</html>

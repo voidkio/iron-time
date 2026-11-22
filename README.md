@@ -8,9 +8,9 @@ Folium 逐字歌词视觉：铁水浇筑、锤击迸火。
 
 ## 实机演示
 
-Folia 内实录，32 秒，原片 1694×862 / 30fps，仓库内为 1280 宽压缩版（4.9 MB）。
+[![IronTime 实机演示](docs/poster.jpg)](https://voidkio.github.io/iron-time/)
 
-[观看演示视频](docs/showcase.mp4)
+Folia 内实录，32 秒，原片 1694×862 / 30fps。点封面即可**在线播放**（有声，无需下载）；仓库内另存 1280 宽压缩版 `docs/showcase.mp4`（4.9 MB）。
 
 ## 效果
 
