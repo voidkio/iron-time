@@ -8,6 +8,7 @@ const SHOCK_MAX_R = 0.55;
 const SPARK_GAIN = 1.35;
 const DUST_GAIN = 1.8;
 const BLOOM_SCALE = 0.25;
+const BLOOM_EVERY = 3;
 const MAX_PARTICLES = 3200;
 const FRAME_SPARK_BUDGET = 1200;
 const SHAKE_VMAX = 2000;
@@ -534,7 +535,7 @@ function mountForge(folium, container, ctx) {
   vignette.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:4';
   container.appendChild(fx); container.appendChild(stage); container.appendChild(vignette);
 
-  let bloomCanvas = null, bloomCtx = null, bloomW = 1, bloomH = 1;
+  let bloomCanvas = null, bloomCtx = null, bloomW = 1, bloomH = 1, bloomTick = 0;
   try {
     bloomCanvas = document.createElement('canvas');
     bloomCtx = bloomCanvas.getContext('2d');
@@ -1048,14 +1049,6 @@ function mountForge(folium, container, ctx) {
     debris.length = 0;
   }
 
-  function burnOutParticles(keepSec) {
-    for (let i = 0; i < particles.length; i++) {
-      const p = particles[i];
-      if (p.ambient) continue;
-      if (p.life > p.age + keepSec) p.life = p.age + keepSec;
-    }
-  }
-
   function syncLateLine(nowAt) {
     if (ctx.staticMode) return;
     const base = nowAt || performance.now();
@@ -1075,7 +1068,7 @@ function mountForge(folium, container, ctx) {
     if (ctx.staticMode) {
       if (idx !== lastIndexSeen) {
         lastIndexSeen = idx; pendingLineIndex = idx; finishing = false;
-        clearLineCallbacks(); burnOutParticles(0.25); buildCurrent();
+        clearLineCallbacks(); buildCurrent();
       }
       return;
     }
@@ -1101,7 +1094,6 @@ function mountForge(folium, container, ctx) {
     finishing = false;
     if (pendingLineIndex === renderedLineIndex) return;
     clearLineCallbacks();
-    burnOutParticles(0.25);
     lastIndexSeen = pendingLineIndex;
     buildCurrent();
     syncLateLine();
@@ -1306,10 +1298,12 @@ function mountForge(folium, container, ctx) {
   function applyBloom() {
     if (!S.bloom || !bloomCtx || reduceMotion()) return;
     if (!bloomW || !bloomH) return;
-    bloomCtx.clearRect(0, 0, bloomW, bloomH);
-    bloomCtx.filter = `blur(${(6 * DPR).toFixed(2)}px)`;
-    bloomCtx.drawImage(fx, 0, 0, fx.width, fx.height, 0, 0, bloomW, bloomH);
-    bloomCtx.filter = 'none';
+    if (++bloomTick % BLOOM_EVERY === 1) {
+      bloomCtx.clearRect(0, 0, bloomW, bloomH);
+      bloomCtx.filter = `blur(${(6 * DPR).toFixed(2)}px)`;
+      bloomCtx.drawImage(fx, 0, 0, fx.width, fx.height, 0, 0, bloomW, bloomH);
+      bloomCtx.filter = 'none';
+    }
     fxctx.globalCompositeOperation = 'lighter';
     fxctx.globalAlpha = S.bloomStrength;
     fxctx.drawImage(bloomCanvas, 0, 0, bloomW, bloomH, 0, 0, W, H);
