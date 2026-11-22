@@ -91,7 +91,7 @@ function drawSparkShape(c, p, u, colRgb, alpha) {
 
     c.lineCap = 'round';
     if (sz > 1.5) {
-      c.fillStyle = `rgba(${rgb},${(alpha * 0.30).toFixed(3)})`;
+      c.fillStyle = `rgba(${rgb},${(alpha * 0.20).toFixed(3)})`;
       c.beginPath(); c.arc(p.x, p.y, sz * 1.45 * shrink, 0, Math.PI * 2); c.fill();
     }
     c.strokeStyle = `rgba(${rgb},${alpha.toFixed(3)})`;
@@ -99,7 +99,7 @@ function drawSparkShape(c, p, u, colRgb, alpha) {
     c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(tx, ty); c.stroke();
 
     if (sz > 0.9) {
-      c.fillStyle = `rgba(${rgb},${Math.min(1, alpha * 1.30).toFixed(3)})`;
+      c.fillStyle = `rgba(${rgb},${Math.min(1, alpha * 1.05).toFixed(3)})`;
       c.beginPath(); c.arc(p.x, p.y, Math.max(0.55, sz * 0.82 * shrink), 0, Math.PI * 2); c.fill();
     }
     return;
@@ -1299,10 +1299,10 @@ function mountForge(folium, container, ctx) {
       const u = p.age / p.life;
       if (p.shape === 'cross' && p.variant !== 2 && !p.branched && u >= BRANCH_AT) { spawnBranches(p); continue; }
 
-      const col = p.ambient ? p.color : sparkRgb(Math.pow(u, 1.9));
+      const col = p.ambient ? p.color : sparkRgb(Math.pow(u, 1.1));
       const alpha = p.ambient
         ? Math.pow(1 - u, 1.5) * 0.5
-        : clamp(Math.pow(1 - u, 1.5) * (p.layer === 0 ? 0.78 : 1) * 1.20, 0, 1);
+        : clamp(Math.pow(1 - u, 1.1) * (p.layer === 0 ? 0.78 : 1) * 1.20, 0, 1);
       if (alpha > 0.01) {
         const additive = p.shape === 'trail' || p.shape === 'cross';
         if (additive) fxctx.globalCompositeOperation = 'lighter';
