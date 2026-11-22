@@ -9,6 +9,8 @@ const SPARK_GAIN = 1.35;
 const DUST_GAIN = 1.8;
 const BLOOM_SCALE = 0.25;
 const MAX_PARTICLES = 3200;
+const FRAME_SPARK_BUDGET = 1200;
+const SHAKE_VMAX = 2000;
 
 const G = (zh, en) => ({ 'zh-CN': zh, en });
 const SETTINGS = [
@@ -1136,7 +1138,7 @@ function mountForge(folium, container, ctx) {
     }
     p.age = p.life;
   }
-  function emitSparks(node, now) {
+  function emitSparks(node, now, budget) {
     if (reduceMotion()) return;
     const r = node.holder.getBoundingClientRect();
     const cr = container.getBoundingClientRect();
@@ -1151,7 +1153,11 @@ function mountForge(folium, container, ctx) {
     const baseCount = node.level === 1 ? (8 + rand() * 6)
                     : node.level === 2 ? (28 + rand() * 20)
                     : (56 + rand() * 28);
-    const count = Math.min(Math.max(0, Math.round(baseCount * mult * SPARK_GAIN * 0.81)), Math.max(0, MAX_PARTICLES - particles.length));
+    const count = Math.min(
+      Math.max(0, Math.round(baseCount * mult * SPARK_GAIN * 0.81)),
+      Math.max(0, MAX_PARTICLES - particles.length),
+      budget === undefined ? Infinity : Math.max(0, Math.round(budget))
+    );
     for (let i = 0; i < count; i++) {
       const lq = rand(); const layer = lq < 0.3 ? 0 : lq < 0.85 ? 1 : 2;
       const shape = chooseShape(rand());
@@ -1206,6 +1212,11 @@ function mountForge(folium, container, ctx) {
       const jitter = (rand() * 2 - 1) * (0.4 + S.asym * 0.6);
       shakeSpring.vx += amp * S.shake * jitter * SHAKE_IMP * 0.76;
       shakeSpring.vy += amp * S.shake * -SHAKE_IMP;
+      const sv = Math.hypot(shakeSpring.vx, shakeSpring.vy);
+      if (sv > SHAKE_VMAX) {
+        const k = SHAKE_VMAX / sv;
+        shakeSpring.vx *= k; shakeSpring.vy *= k;
+      }
     }
     if (node.level >= 2) {
       groundShockAt = now;
@@ -1509,6 +1520,16 @@ function mountForge(folium, container, ctx) {
     }
 
     const coolK = S.cool;
+    let strikeN = 0;
+    if (!paused) {
+      for (const n of wordNodes) {
+        if (n.struck) continue;
+        const st = (timeSec - n.w.start) / Math.max(0.001, n.w.end - n.w.start);
+        if (st > 0 && (st < 1 || timeSec - n.w.start < LATE_STRIKE)) strikeN++;
+      }
+    }
+    const sparkBudget = strikeN > 1 ? FRAME_SPARK_BUDGET / strikeN : Infinity;
+
     wordNodes.forEach(n => {
       const { w } = n;
       const cache = n._cache || (n._cache = {});
@@ -1536,7 +1557,7 @@ function mountForge(folium, container, ctx) {
         if (w.isFirst || (wt >= t3 + 10)) n.level = 3;
         else if (w.strong || wt >= t2 || w.isLast || fracRand(w.start * 1000, 7) > 0.92 - sens * 0.25) n.level = 2;
         else n.level = 1;
-        emitSparks(n, now);
+        emitSparks(n, now, sparkBudget);
         const punch = n.level === 3 ? 1 : n.level === 2 ? 0.65 : 0.35;
         n.strain.v += punch * 2.2;
         n.lift.v += punch * 5.0;

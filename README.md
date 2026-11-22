@@ -89,6 +89,8 @@ git clone https://github.com/voidkio/iron-time.git "$env:APPDATA\Folia\mods\iron
 - 粒子尺寸、初速、重力统一乘 `PX` 分辨率系数（1080p 全屏为 1.0），4K 与窗口化下观感一致
 - 配色用预解析的 RGB 查找表，避免每帧解析颜色字符串
 - 粒子总数上限 `MAX_PARTICLES = 3200`，超限时只截断新增、不强杀已有粒子，避免视觉跳变
+- 同帧多字齐发时按 `FRAME_SPARK_BUDGET = 1200` 均分发射量，单词爆发不受影响，避免一帧内堆出上千粒子
+- 震屏冲量限幅 `SHAKE_VMAX = 2000` px/s，多字同帧不会叠成整屏猛甩
 - Canvas 状态与 `save` / `restore` 严格配对，`lineCap` 只在需要的分支内设置
 
 ## 许可证
