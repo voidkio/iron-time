@@ -620,8 +620,6 @@ function mountForge(folium, container, ctx) {
   let staticPainted = -999;
   const wordNodes = [];
 
-  function clearBox(box) { box.replaceChildren(); }
-
   let themeForFont = ctx.getTheme ? ctx.getTheme() : {};
 
   const hostFontStack = (theme) => {
@@ -647,10 +645,97 @@ function mountForge(folium, container, ctx) {
 
   stage.style.fontFamily = fontStack;
 
+  // ---- 文字层复用池 ----
+  // 换行时不再销毁重建 DOM：骨架 / 行 / 词槽都跨行复用，只更新文字、尺寸与状态。
+  // 池只扩容不回收，槽位数跟随历史最长的一行。
+  const sk = { box: null, area: null, line: null, column: null, inner: null, rows: [] };
+
+  function ensureSkeleton(box) {
+    if (sk.area && sk.box === box) return;
+    sk.box = box;
+    sk.rows.length = 0;
+    const area = sk.area = document.createElement('div');
+    area.style.cssText = 'position:relative;width:100%;height:min(70vh,100%);display:flex;align-items:center;justify-content:center;padding:2rem;box-sizing:border-box;pointer-events:none';
+    const line = sk.line = document.createElement('div');
+    line.dataset && (line.dataset.overlapFitLine = '');
+    line.style.cssText = 'display:flex;flex-direction:row-reverse;align-items:stretch;justify-content:center;width:100%;max-width:64rem;gap:2rem';
+    const column = sk.column = document.createElement('div');
+    column.style.cssText = 'position:relative;display:flex;align-items:center;justify-content:center;padding-left:.75rem;padding-right:.75rem;min-width:3.8rem';
+    const inner = sk.inner = document.createElement('div');
+    inner.style.cssText = 'position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start';
+    area.appendChild(line); line.appendChild(column); column.appendChild(inner);
+    box.appendChild(area);
+  }
+
+  function ensureRow(ri) {
+    let r = sk.rows[ri];
+    if (r) return r;
+    const el = document.createElement('div');
+    el.dataset && (el.dataset.overlapFitRow = '');
+    el.style.cssText = 'position:relative;display:inline-flex;flex-direction:row;align-items:center;justify-content:center;white-space:nowrap;line-height:1;min-width:auto;min-height:auto;padding:.2rem .5rem;transform-origin:center';
+    sk.inner.appendChild(el);
+    r = sk.rows[ri] = { el, cells: [] };
+    return r;
+  }
+
+  function makeCell(faceBg, rustBg) {
+    const holder = document.createElement('span');
+    holder.style.cssText = `position:relative;display:inline-block;white-space:nowrap;transition:none;transform-origin:center;will-change:transform;line-height:${GLOW_LINE_HEIGHT}`;
+    const mk = css => { const s = document.createElement('span'); s.style.cssText = css; return s; };
+    const face = mk(`position:relative;display:block;white-space:pre;color:transparent;-webkit-text-fill-color:transparent;background-image:${faceBg};background-size:184px 184px,auto,auto,auto,auto;background-blend-mode:soft-light,overlay,screen,normal;-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 1px 0 rgba(0,0,0,.85));opacity:1;transition:none;z-index:1`);
+    const rust = mk(`position:absolute;inset:0;white-space:pre;color:transparent;-webkit-text-fill-color:transparent;background-image:${rustBg};background-size:184px 184px,auto,auto,auto;background-blend-mode:overlay,normal,normal,normal;-webkit-background-clip:text;background-clip:text;opacity:.95;mix-blend-mode:normal;transition:none;z-index:2`);
+    const edge = mk('position:absolute;inset:0;white-space:pre;color:#4A1F12;clip-path:inset(64% 0 0 0);opacity:0;mix-blend-mode:multiply;transition:none;z-index:3');
+    const ghost = mk('position:absolute;inset:0;white-space:pre;color:#C4C2B8;opacity:0;transform:translate3d(-2px,1px,0);mix-blend-mode:screen;transition:none;z-index:4');
+    const ghost2 = mk('position:absolute;inset:0;white-space:pre;color:#FFE9A8;opacity:0;transform:translate3d(2px,-1px,0);mix-blend-mode:screen;transition:none;z-index:5');
+    const heat = mk(`position:absolute;inset:0;white-space:pre;color:${palette.hot};opacity:0;mix-blend-mode:screen;transition:none;z-index:6`);
+    const glow = mk('position:absolute;inset:0;white-space:pre;color:transparent;opacity:0;mix-blend-mode:screen;transition:none;z-index:7');
+    holder.appendChild(face); holder.appendChild(rust); holder.appendChild(edge);
+    holder.appendChild(ghost); holder.appendChild(ghost2); holder.appendChild(heat); holder.appendChild(glow);
+    return {
+      holder, face, rust, edge, ghost, ghost2, heat, glow,
+      text: null, fw: 0, glowShadow: '', fallCrack: null, shards: null, shardText: null,
+    };
+  }
+
+  const GHOST1_AT = 'translate3d(-2px,1px,0)';
+  const GHOST2_AT = 'translate3d(2px,-1px,0)';
+
+  function bindCell(cell, w, fontSize, weight, margin, glowShadow) {
+    if (cell.text !== w.text) {
+      const t = w.text;
+      cell.text = t;
+      cell.face.textContent = t; cell.rust.textContent = t; cell.edge.textContent = t;
+      cell.ghost.textContent = t; cell.ghost2.textContent = t;
+      cell.heat.textContent = t; cell.glow.textContent = t;
+      if (cell.fallCrack) cell.fallCrack.textContent = t;
+      if (cell.shards) {
+        for (let i = 0; i < cell.shards.length; i++) cell.shards[i].el.textContent = t;
+        cell.shardText = t;
+      }
+    }
+    const holder = cell.holder;
+    holder.style.display = 'inline-block';
+    holder.style.fontSize = `${fontSize}px`;
+    if (cell.fw !== weight) { cell.fw = weight; holder.style.fontWeight = weight; }
+    holder.style.marginInlineEnd = margin;
+    if (cell.glowShadow !== glowShadow) { cell.glowShadow = glowShadow; cell.glow.style.textShadow = glowShadow; }
+    // 上一行的落尽/碎裂状态必须清干净，否则新行会带着残影出现
+    holder.style.opacity = '1';
+    cell.ghost.style.transform = GHOST1_AT;
+    cell.ghost2.style.transform = GHOST2_AT;
+    if (cell.fallCrack) cell.fallCrack.style.opacity = '0';
+    if (cell.shards) {
+      for (let i = 0; i < cell.shards.length; i++) cell.shards[i].el.style.opacity = '0';
+    }
+  }
+
   function renderLayout(layout, box, withEntry) {
-    clearBox(box);
     const nodes = [];
-    if (!layout) return nodes;
+    ensureSkeleton(box);
+    if (!layout) {
+      for (let i = 0; i < sk.rows.length; i++) sk.rows[i].el.style.display = 'none';
+      return nodes;
+    }
     const fontScale = ctx.getDisplay ? ctx.getDisplay().lyricsFontScale : 1;
     const fit = layout._overlapFit != null ? layout._overlapFit : 1;
     const d = layout.densityScale * fit;
@@ -661,64 +746,34 @@ function mountForge(folium, container, ctx) {
     const glowK = clamp(S.glow, 0.2, 2);
     const energy = layout._energy != null ? layout._energy : 1;
     const r1 = (3 * glowK * FX_GAIN).toFixed(1), r2 = (9 * glowK * FX_GAIN).toFixed(1), r3 = (20 * glowK * FX_GAIN * (0.6 + energy * 0.4)).toFixed(1);
-
-    const area = document.createElement('div');
-    area.style.cssText = 'position:relative;width:100%;height:min(70vh,100%);display:flex;align-items:center;justify-content:center;padding:2rem;box-sizing:border-box;pointer-events:none';
-    const line = document.createElement('div');
-    line.dataset && (line.dataset.overlapFitLine = '');
-    line.style.cssText = `display:flex;flex-direction:row-reverse;align-items:stretch;justify-content:center;width:100%;max-width:64rem;perspective:${layout.perspective}px;gap:2rem`;
-    const column = document.createElement('div');
-    column.style.cssText = 'position:relative;display:flex;align-items:center;justify-content:center;padding-left:.75rem;padding-right:.75rem;min-width:3.8rem';
-    const inner = document.createElement('div');
-    inner.style.cssText = 'position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start';
-    area.appendChild(line); line.appendChild(column); column.appendChild(inner);
-    box.appendChild(area);
+    const glowShadow = `0 0 ${r1}px var(--heatColor),0 0 ${r2}px var(--heatColor),0 0 ${r3}px ${palette.red}`;
+    sk.line.style.perspective = `${layout.perspective}px`;
 
     layout.rows.forEach((row, ri) => {
       const sp = spacing[ri] || {};
-      const rowEl = document.createElement('div');
-      rowEl.dataset && (rowEl.dataset.overlapFitRow = '');
+      const r = ensureRow(ri);
+      const rowEl = r.el;
       const enter = withEntry && !reduceMotion();
       const entryY = enter ? (-30 - row.rowIndex * 6) * energy : 0;
-      rowEl.style.cssText = `position:relative;display:inline-flex;flex-direction:row;align-items:center;justify-content:center;white-space:nowrap;line-height:1;min-width:auto;min-height:auto;padding:.2rem .5rem;align-self:${row.alignSelf || 'center'};transform:translate3d(${row.rowX}px,${(row.rowY + entryY).toFixed(2)}px,0) rotate(${row.rowRotate}deg);transform-origin:center;margin-bottom:${sp.marginBottom || (row.marginBottom + 'rem')}`;
-      inner.appendChild(rowEl);
+      rowEl.style.display = 'inline-flex';
+      rowEl.style.alignSelf = row.alignSelf || 'center';
+      rowEl.style.marginBottom = sp.marginBottom || (row.marginBottom + 'rem');
+      rowEl.style.transform = `translate3d(${row.rowX}px,${(row.rowY + entryY).toFixed(2)}px,0) rotate(${row.rowRotate}deg)`;
 
       row._el = rowEl;
       row._entrySpring = { x: entryY, v: 0, k: 180, c: 22 };
       row._entryActive = enter;
 
       row.words.forEach((w, wi) => {
-        const holder = document.createElement('span');
-        holder.style.cssText = `position:relative;display:inline-block;white-space:nowrap;transition:none;transform-origin:center;will-change:transform;font-weight:${fontWeight};line-height:${GLOW_LINE_HEIGHT};margin-inline-end:${(sp.wordMargins && sp.wordMargins[wi]) || WORD_GAP}`;
-        holder.style.fontSize = `${fontSize}px`;
-
-        const face = document.createElement('span');
-        face.textContent = w.text;
-        face.style.cssText = `position:relative;display:block;white-space:pre;color:transparent;-webkit-text-fill-color:transparent;background-image:${faceBg};background-size:184px 184px,auto,auto,auto,auto;background-blend-mode:soft-light,overlay,screen,normal;-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 1px 0 rgba(0,0,0,.85));opacity:1;transition:none;z-index:1`;
-        const rust = document.createElement('span');
-        rust.textContent = w.text;
-        rust.style.cssText = `position:absolute;inset:0;white-space:pre;color:transparent;-webkit-text-fill-color:transparent;background-image:${rustBg};background-size:184px 184px,auto,auto,auto;background-blend-mode:overlay,normal,normal,normal;-webkit-background-clip:text;background-clip:text;opacity:.95;mix-blend-mode:normal;transition:none;z-index:2`;
-        const edge = document.createElement('span');
-        edge.textContent = w.text;
-        edge.style.cssText = 'position:absolute;inset:0;white-space:pre;color:#4A1F12;clip-path:inset(64% 0 0 0);opacity:0;mix-blend-mode:multiply;transition:none;z-index:3';
-        const ghost = document.createElement('span');
-        ghost.textContent = w.text;
-        ghost.style.cssText = 'position:absolute;inset:0;white-space:pre;color:#C4C2B8;opacity:0;transform:translate3d(-2px,1px,0);mix-blend-mode:screen;transition:none;z-index:4';
-        const ghost2 = document.createElement('span');
-        ghost2.textContent = w.text;
-        ghost2.style.cssText = 'position:absolute;inset:0;white-space:pre;color:#FFE9A8;opacity:0;transform:translate3d(2px,-1px,0);mix-blend-mode:screen;transition:none;z-index:5';
-        const heat = document.createElement('span');
-        heat.textContent = w.text;
-        heat.style.cssText = `position:absolute;inset:0;white-space:pre;color:${palette.hot};opacity:0;mix-blend-mode:screen;transition:none;z-index:6`;
-        const glow = document.createElement('span');
-        glow.textContent = w.text;
-        glow.style.cssText = `position:absolute;inset:0;white-space:pre;color:transparent;opacity:0;mix-blend-mode:screen;transition:none;z-index:7;text-shadow:0 0 ${r1}px var(--heatColor),0 0 ${r2}px var(--heatColor),0 0 ${r3}px ${palette.red}`;
-        holder.appendChild(face); holder.appendChild(rust); holder.appendChild(edge); holder.appendChild(ghost); holder.appendChild(ghost2);
-        holder.appendChild(heat); holder.appendChild(glow);
-        rowEl.appendChild(holder);
+        let cell = r.cells[wi];
+        if (!cell) { cell = r.cells[wi] = makeCell(faceBg, rustBg); }
+        if (cell.holder.parentNode !== rowEl) rowEl.appendChild(cell.holder);
+        bindCell(cell, w, fontSize, fontWeight, (sp.wordMargins && sp.wordMargins[wi]) || WORD_GAP, glowShadow);
 
         nodes.push({
-          w, holder, face, rust, edge, ghost, ghost2, heat, glow,
+          w, cell,
+          holder: cell.holder, face: cell.face, rust: cell.rust, edge: cell.edge,
+          ghost: cell.ghost, ghost2: cell.ghost2, heat: cell.heat, glow: cell.glow,
           scale: w.scale != null ? w.scale : 1,
           strain: makeSpring(200, 20),
           lift: makeSpring(200, 20),
@@ -727,7 +782,9 @@ function mountForge(folium, container, ctx) {
           _cache: {},
         });
       });
+      for (let i = row.words.length; i < r.cells.length; i++) r.cells[i].holder.style.display = 'none';
     });
+    for (let i = layout.rows.length; i < sk.rows.length; i++) sk.rows[i].el.style.display = 'none';
     return nodes;
   }
 
@@ -854,11 +911,12 @@ function mountForge(folium, container, ctx) {
     };
   }
   function ensureFallCrack(n) {
-    if (n.fallCrack) return n.fallCrack;
+    const cell = n.cell;
+    if (cell.fallCrack) return cell.fallCrack;
     const cr = document.createElement('span');
     cr.textContent = n.w.text;
     cr.style.cssText = `position:absolute;inset:0;white-space:pre;color:transparent;-webkit-text-fill-color:transparent;background-image:${CRACK_BG};background-size:100% 100%;-webkit-background-clip:text;background-clip:text;opacity:0;transition:none;z-index:8`;
-    n.holder.appendChild(cr); n.fallCrack = cr;
+    n.holder.appendChild(cr); cell.fallCrack = cr;
     return cr;
   }
   const SHARD_PIECE = [
@@ -869,7 +927,14 @@ function mountForge(folium, container, ctx) {
     'polygon(62% 40%, 100% 78%, 66% 100%)',
   ];
   function ensureShards(n) {
-    if (n.shards) return n.shards;
+    const cell = n.cell;
+    if (cell.shards) {
+      if (cell.shardText !== n.w.text) {
+        cell.shardText = n.w.text;
+        for (let i = 0; i < cell.shards.length; i++) cell.shards[i].el.textContent = n.w.text;
+      }
+      return cell.shards;
+    }
     const faceBg = FACE_BG.replace('__RUST__', rustTexUrl());
     const rustBg = RUST_BG.replace('__RUST__', rustTexUrl());
     const rand = mulberry32(hashSeed(n.w.text + '|shard|' + (n.w.start || 0)));
@@ -885,7 +950,7 @@ function mountForge(folium, container, ctx) {
         rustBias: 0.9 + rand() * 0.1, seed: rand() * 1000,
       };
     });
-    n.shards = shards;
+    cell.shards = shards; cell.shardText = n.w.text;
     return shards;
   }
   function applyWordFall(n, sinceEndMs, now, paint) {
@@ -909,8 +974,8 @@ function mountForge(folium, container, ctx) {
       n.fallHidden = false;
       ss(n.holder, 'opacity', '1');
       ss(n.holder, 'transform', `translate3d(${baseX}px,${baseY}px,0) scale(${baseScale.toFixed(4)}) rotate(${baseRot}deg)`);
-      if (n.shards) n.shards.forEach(s => { ss(s.el, 'opacity', '0'); });
-      if (n.fallCrack) ss(n.fallCrack, 'opacity', '0');
+      if (n.cell.shards) n.cell.shards.forEach(s => { ss(s.el, 'opacity', '0'); });
+      if (n.cell.fallCrack) ss(n.cell.fallCrack, 'opacity', '0');
       return;
     }
 
@@ -958,7 +1023,7 @@ function mountForge(folium, container, ctx) {
       ss(n.holder, 'opacity', '0');
       ss(n.face, 'opacity', '0'); ss(n.rust, 'opacity', '0'); ss(n.edge, 'opacity', '0');
       ss(n.heat, 'opacity', '0'); ss(n.glow, 'opacity', '0');
-      if (n.fallCrack) ss(n.fallCrack, 'opacity', '0');
+      if (n.cell.fallCrack) ss(n.cell.fallCrack, 'opacity', '0');
       shards.forEach(s => { ss(s.el, 'opacity', '0'); });
     }
   }

@@ -96,6 +96,7 @@ git clone https://github.com/voidkio/iron-time.git "$env:APPDATA\Folia\mods\iron
 - Bloom 后处理每 3 帧重算一次，光晕最多滞后 50ms；跳过的帧复用上一份结果，画面不中断
 - 每行歌词的 DOM 只构建一次：重叠自适应测量用的那棵直接复用，测完只改字号与入场位移，不再重建第二遍
 - 同帧击打限 `STRIKE_PER_FRAME = 3` 个词，其余进队列在后续帧补击且不丢击打，避免一帧内堆起全部文字层的重活
+- 文字层跨行复用：骨架、行、词槽只建一次，换行时只改文字与字号，碎裂层也随槽位保留（单次构建 43ms → 1ms，池满后不再新增节点）
 - Canvas 状态与 `save` / `restore` 严格配对，`lineCap` 只在需要的分支内设置
 
 ## 许可证
