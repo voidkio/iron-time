@@ -8,6 +8,7 @@ const SHOCK_MAX_R = 0.55;
 const SPARK_GAIN = 1.35;
 const DUST_GAIN = 1.8;
 const BLOOM_SCALE = 0.25;
+const MAX_PARTICLES = 4000;
 
 const G = (zh, en) => ({ 'zh-CN': zh, en });
 const SETTINGS = [
@@ -1102,7 +1103,7 @@ function mountForge(folium, container, ctx) {
     return H * 0.9;
   }
   function spawnSecondary(p) {
-    for (let i = 0; i < (2 + (p._rand() * 3 | 0)) * FX_GAIN; i++) {
+    for (let i = 0, n = (2 + (p._rand() * 3 | 0)) * FX_GAIN; i < n && particles.length < MAX_PARTICLES; i++) {
       const ang = Math.PI / 2 + (p._rand() - 0.5) * 100 * RAD;
       const v = (60 + p._rand() * 120) * 0.9 * PX;
       particles.push({
@@ -1120,7 +1121,7 @@ function mountForge(folium, container, ctx) {
     const baseAng = Math.atan2(p.vy, p.vx);
     const baseSpd = Math.hypot(p.vx, p.vy);
     const remain = Math.max(0.16, (p.life - p.age) * 1.2);
-    for (let k = 0; k < n; k++) {
+    for (let k = 0; k < n && particles.length < MAX_PARTICLES; k++) {
       const off = (k / (n - 1) - 0.5) * 2 * (0.22 + rnd() * 0.32);
       const ang = baseAng + off + (rnd() - 0.5) * 0.18;
       const spd = baseSpd * (0.80 + rnd() * 0.40);
@@ -1150,7 +1151,7 @@ function mountForge(folium, container, ctx) {
     const baseCount = node.level === 1 ? (8 + rand() * 6)
                     : node.level === 2 ? (28 + rand() * 20)
                     : (56 + rand() * 28);
-    const count = Math.max(0, Math.round(baseCount * mult * SPARK_GAIN * 0.81));
+    const count = Math.min(Math.max(0, Math.round(baseCount * mult * SPARK_GAIN * 0.81)), Math.max(0, MAX_PARTICLES - particles.length));
     for (let i = 0; i < count; i++) {
       const lq = rand(); const layer = lq < 0.3 ? 0 : lq < 0.85 ? 1 : 2;
       const shape = chooseShape(rand());
@@ -1219,7 +1220,7 @@ function mountForge(folium, container, ctx) {
   }
 
   function drawAmbientSpawn() {
-    if (!S.ambient || reduceMotion()) return;
+    if (!S.ambient || reduceMotion() || particles.length >= MAX_PARTICLES) return;
     const ambientEnergy = currentLayout && currentLayout._energy != null ? currentLayout._energy : 1;
     if (Math.random() > 0.08 * ambientEnergy) return;
     const stops = AMBIENT_OVERRIDES[S.palette] || palette.stops;
@@ -1430,7 +1431,7 @@ function mountForge(folium, container, ctx) {
         sh.burst = true;
         const n = sh.level === 3 ? 14 : 8;
         const ringR = Math.min(maxR, (26 + wScale(sh.level) * 96 * S.shock) * SHOCK_GAIN * shEnergy);
-        for (let k = 0; k < n; k++) {
+        for (let k = 0; k < n && particles.length < MAX_PARTICLES; k++) {
           const ang = (k / n) * Math.PI * 2 + Math.random() * 0.4;
           const rr = ringR * 0.7;
           particles.push({
