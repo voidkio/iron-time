@@ -6,11 +6,9 @@ Folium 逐字歌词视觉：铁水浇筑、锤击迸火。
 
 ![IronTime](preview.png)
 
-## 实机演示
+## 演示
 
-[![IronTime 实机演示](docs/poster.jpg)](https://voidkio.github.io/iron-time/)
 
-Folia 内实录，32 秒，原片 1694×862 / 30fps。点封面即可**在线播放**（有声，无需下载）；仓库内另存 1280 宽压缩版 `docs/showcase.mp4`（4.9 MB）。
 
 ## 效果
 
@@ -36,10 +34,6 @@ Folia 内实录，32 秒，原片 1694×862 / 30fps。点封面即可**在线播
 半分辨率离屏 Bloom 合成、径向暗角、环境余烬上飘。
 
 ## 安装
-
-**模组市场**：在 Folium 的模组市场搜索 IronTime。
-
-**手动安装**：把本仓库的文件放进 `%appdata%\Folia\mods\iron-time\`，目录名必须是 `iron-time`（与 `mod.json` 的 `id` 一致），目录内直接是 `mod.json`、`client.mjs`、`preview.png`。
 
 ```powershell
 git clone https://github.com/voidkio/iron-time.git "$env:APPDATA\Folia\mods\iron-time"
@@ -80,7 +74,7 @@ git clone https://github.com/voidkio/iron-time.git "$env:APPDATA\Folia\mods\iron
 - Folia `>=0.7.21`
 - Folium 契约版本 `1`
 
-纯渲染端实现：原生 DOM + Canvas 2D + 弹簧积分，没有 React、没有第三方库、不读网络、不写文件、不申请任何权限。
+纯渲染端实现：原生 DOM + Canvas 2D + 弹簧积分，没有 React、没有第三方库。
 
 ## 实现要点
 
